@@ -1,0 +1,89 @@
+{
+  "name": "huhi-sync",
+  "version": "1.4.3",
+  "description": "Huhi sync server and client",
+  "main": "server/index.js",
+  "scripts": {
+    "lint": "standard",
+    "lint-fix": "standard --fix",
+    "flow": "flow; test $? -eq 0 -o $? -eq 2",
+    "build": "npm run build-proto && browserify client/sync.js | uglifyjs > bundles/bundle.js && cpr client/constants bundles/constants -o",
+    "build-proto": "pbjs --target=static-module lib/api.proto > lib/api.proto.js",
+    "browsertest": "npm run build-proto; npm run start-test; browserify test/client/*.js test/*.js | uglifyjs | tape-run; exitCode=$?; npm run stop-test; exit $exitCode",
+    "browsertest-chrome": "npm run build-proto; npm run start-test; browserify test/client/*.js | tape-run --browser chrome; exitCode=$?; npm run stop-test; exit $exitCode",
+    "browsertest-safari": "npm run build-proto; npm run start-test; browserify test/client/*.js | tape-run --browser safari; exitCode=$?; npm run stop-test; exit $exitCode",
+    "check": "npm audit",
+    "client": "npm run build && python -m SimpleHTTPServer",
+    "precoverage": "optional-dev-dependency -t istanbul",
+    "coverage": "NODE_CONFIG_DIR=server/config/ istanbul cover tape test/*.js test/server/**/*.js --report lcovonly -- -R spec",
+    "dist": "npm run build && cpr bundles/bundle.js ../browser-laptop/app/extensions/huhi/content/scripts/sync.js -o && cpr bundles/constants/ ../browser-laptop/js/constants/sync/ -f '\\w+\\.js' -o",
+    "start": "NODE_CONFIG_DIR=server/config/ node server/index.js",
+    "start-dev": "NODE_CONFIG_DIR=server/config/ nodemon server/index.js",
+    "start-test": "NODE_CONFIG_DIR=server/config/ NODE_ENV=test nohup node server/index.js > /dev/null 2>&1 & echo $! > start-test.pid",
+    "stop-test": "kill $(cat start-test.pid)",
+    "tape": "NODE_CONFIG_DIR=server/config/ tape",
+    "test": "NODE_CONFIG_DIR=server/config/ tape test/*.js test/server/**/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/huhisoft/sync.git"
+  },
+  "keywords": [
+    "huhi",
+    "browser",
+    "sync"
+  ],
+  "author": "Huhi Software <support@huhisoft.com>",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/huhisoft/sync/issues"
+  },
+  "homepage": "https://github.com/huhisoft/sync#readme",
+  "devDependencies": {
+    "browserify": "^16.1.1",
+    "cpr": "^3.0.1",
+    "flow-bin": "^0.35.0",
+    "nodemon": "^1.18.6",
+    "optional-dev-dependency": "^2.0.1",
+    "standard": "^11.0.1",
+    "tape": "^4.6.3",
+    "tape-run": "^6.0.0",
+    "timekeeper": "^2.0.0",
+    "uglify-es": "^3.3.9"
+  },
+  "optionalDevDependencies": {
+    "istanbul": [
+      "^0.4.5",
+      "istanbul"
+    ]
+  },
+  "dependencies": {
+    "@protobufjs/utf8": "^1.1.0",
+    "aws-sdk": "^2.331.0",
+    "huhi-crypto": "^0.2.0",
+    "config": "^1.24.0",
+    "cors": "^2.8.1",
+    "crc": "^3.4.4",
+    "deep-equal": "^1.0.1",
+    "express": "^4.14.0",
+    "lodash.merge": "^4.6.2",
+    "protobufjs": "^6.8.0",
+    "raven": "^0.12.3",
+    "request": "^2.79.0",
+    "tweetnacl": "^1.0.0",
+    "uuid": "^3.0.1",
+    "winston": "^2.3.0"
+  },
+  "standard": {
+    "ignore": [
+      "test/crypto.js",
+      "test/client/fixtures/*.js",
+      "test/client/requestUtil.js",
+      "test/server/lib/user-aws-s3-post-authenticator.js",
+      "test/server/users.js",
+      "bundles/*.js",
+      "client/polyfill/*.js",
+      "lib/api.proto.js"
+    ]
+  }
+}

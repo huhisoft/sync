@@ -1,0 +1,19 @@
+{
+  "name": "@huhi/sync-client",
+  "version": "0.1.0",
+  "description": "Browserified sync client for Huhi",
+  "main": "bundle.js",
+  "scripts": {
+    "test": "cd .. && npm run browsertest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huhisoft/sync.git"
+  },
+  "author": "Huy Nguyen <huynq.cntt@gmail.com>",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/huhisoft/sync/issues"
+  },
+  "homepage": "https://github.com/huhisoft/sync#readme"
+}
