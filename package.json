@@ -60,7 +60,7 @@
   "dependencies": {
     "@protobufjs/utf8": "^1.1.0",
     "aws-sdk": "^2.331.0",
-    "huhi-crypto": "^0.2.0",
+    "huhi-crypto": "github:huhisoft/crypto#fad144ff953eccb76e41126f98caa91451ee1fd8",
     "config": "^1.24.0",
     "cors": "^2.8.1",
     "crc": "^3.4.4",
