@@ -8,12 +8,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/huhisoft/sync.git"
+    "url": "git+https://github.com/huhi/sync.git"
   },
-  "author": "Huy Nguyen <huynq.cntt@gmail.com>",
+  "author": "yan@huhisoft.com",
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/huhisoft/sync/issues"
+    "url": "https://github.com/huhi/sync/issues"
   },
-  "homepage": "https://github.com/huhisoft/sync#readme"
+  "homepage": "https://github.com/huhi/sync#readme"
 }

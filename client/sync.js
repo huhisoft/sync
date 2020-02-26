@@ -23,6 +23,7 @@ var clientKeys = {}
 var config = {}
 var seed
 var nextContinuationTokens = {}
+var isCompactionInProgress = false
 
 /**
  * Logs stuff on the visible HTML page.
@@ -58,10 +59,11 @@ const maybeSetDeviceId = (requester) => {
   }
   return requester.list(proto.categories.PREFERENCES)
     .then(s3Objects => requester.s3ObjectsToRecords(s3Objects.contents))
-    .then((records) => {
+    .then((recordObjects) => {
       let maxId = -1
-      if (records && records.length) {
-        records.forEach((record) => {
+      if (recordObjects && recordObjects.length) {
+        recordObjects.forEach((recordObject) => {
+          const record = recordObject.record
           const device = record.device
           if (device && record.deviceId[0] > maxId) {
             maxId = record.deviceId[0]
@@ -86,9 +88,10 @@ const startSync = (requester) => {
    * @returns  {Array.<Object>}
    */
   const getJSRecords = (s3Objects, filterFunction) => {
-    const records = requester.s3ObjectsToRecords(s3Objects)
+    const recordObjects = requester.s3ObjectsToRecords(s3Objects)
     let jsRecords = []
-    for (let record of records) {
+    for (let recordObject of recordObjects) {
+      const record = recordObject.record
       const jsRecord = recordUtil.syncRecordAsJS(record)
       // Useful but stored in the S3 key.
       jsRecord.syncTimestamp = record.syncTimestamp
@@ -149,6 +152,8 @@ const startSync = (requester) => {
   ipc.on(messages.SEND_SYNC_RECORDS, (e, category, records) => {
     logSync(`Sending ${records.length} records`)
     const categoryId = proto.categories[category]
+    const promisePuts = []
+    const sentRecords = []
     records.forEach((record) => {
       if (!record) {
         logSync(`could not send empty record`, ERROR)
@@ -160,11 +165,17 @@ const startSync = (requester) => {
       if (record.bookmark && record.bookmark.parentFolderObjectId) {
         record.bookmark.parentFolderObjectId = new Uint8Array(record.bookmark.parentFolderObjectId)
       }
-      requester.bufferedPut(categoryId, record).then(() => {
-        logSync(`sending record: ${JSON.stringify(record)}`)
-      }).catch((e) => {
-        logSync(`could not send record ${JSON.stringify(record)}: ${e}`, ERROR)
-      })
+      promisePuts.push(
+        requester.bufferedPut(categoryId, record).then(() => {
+          logSync(`sending record: ${JSON.stringify(record)}`)
+          sentRecords.push(record)
+        }).catch((e) => {
+          logSync(`could not send record ${JSON.stringify(record)}: ${e}`, ERROR)
+        })
+      )
+    })
+    Promise.all(promisePuts).then(() => {
+      ipc.send(messages.SENT_SYNC_RECORDS, category, sentRecords)
     })
   })
   ipc.on(messages.DELETE_SYNC_USER, (e) => {
@@ -183,6 +194,32 @@ const startSync = (requester) => {
     requester.deleteCategory(proto.categories[category]).then(() => {
       requester.purgeUserQueue()
     })
+  })
+  ipc.on(messages.COMPACT_SYNC_CATEGORY, (e, category) => {
+    if (!proto.categories[category]) {
+      throw new Error(`Unsupported sync category: ${category}`)
+    }
+    const compactionDone = () => {
+      ipc.send(messages.COMPACTED_SYNC_CATEGORY, category)
+      isCompactionInProgress = false
+    }
+    const compactionUpdate = (records) => {
+      let jsRecords = []
+      for (let record of records) {
+        const jsRecord = recordUtil.syncRecordAsJS(record)
+        jsRecord.syncTimestamp = record.syncTimestamp
+        jsRecords.push(jsRecord)
+      }
+      logSync(`Compaction records update category: ${category}`)
+      ipc.send(messages.GET_EXISTING_OBJECTS, category, jsRecords, 0, false)
+    }
+    if (!isCompactionInProgress) {
+      requester.list(proto.categories[category], 0, 1000, '',
+        {compaction: true, compactionDoneCb: compactionDone, compactionUpdateCb: compactionUpdate}).then(() => {
+        logSync(`Compacting category: ${category}`)
+        isCompactionInProgress = true
+      })
+    }
   })
   ipc.on(messages.DELETE_SYNC_SITE_SETTINGS, (e) => {
     logSync(`Deleting siteSettings`)

@@ -85,6 +85,12 @@ const messages = {
    */
   SEND_SYNC_RECORDS: _, /* @param {string=} categoryName, @param {Array.<Object>} records */
   /**
+   * webview ->  browser
+   * browser can check whether the records in SEND_SYNC_RECORDS get uploaded
+   * successfully.
+   */
+  SENT_SYNC_RECORDS: _, /* @param {string=} categoryName, @param {Array.<Object>} records */
+  /**
    * browser -> webview
    * browser sends this to delete the current user.
    */
@@ -99,6 +105,16 @@ const messages = {
    * browser sends this to delete all records in a category.
    */
   DELETE_SYNC_CATEGORY: _, /* @param {string} categoryName */
+  /**
+   * browser -> webview
+   * browser sends this to compact records in a category
+   */
+  COMPACT_SYNC_CATEGORY: _, /* @param {string} categoryName */
+  /**
+   * webview -> browser
+   * sent after compaction is competed.
+   */
+  COMPACTED_SYNC_CATEGORY: _, /* @param {string} categoryName */
   /**
    * webview -> browser
    * webview sends this to delete all site settings.

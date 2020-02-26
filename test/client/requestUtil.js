@@ -79,7 +79,7 @@ test('client RequestUtil', (t) => {
         requestUtil.list(proto.categories.PREFERENCES)
           .then(s3Objects => requestUtil.s3ObjectsToRecords(s3Objects.contents))
           .then((response) => {
-            const s3Record = response[0]
+            const s3Record = response[0].record
             // FIXME: Should this deserialize to 'CREATE' ?
             t.equals(s3Record.action, 0, `${t.name}: action`)
             t.deepEquals(s3Record.deviceId, deviceRecord.deviceId, `${t.name}: deviceId`)
@@ -128,9 +128,9 @@ test('client RequestUtil', (t) => {
                 .then(s3Objects => requestUtil.s3ObjectsToRecords(s3Objects.contents))
                 .then((response) => {
                   t.equals(response.length, 3, t.name)
-                  const s3Record0 = response[0]
-                  const s3Record1 = response[1]
-                  const s3Record2 = response[2]
+                  const s3Record0 = response[0].record
+                  const s3Record1 = response[1].record
+                  const s3Record2 = response[2].record
                   t.equals(s3Record0.device.name, `pyramid at ${TIME_B}`)
                   t.equals(s3Record1.device.name, `pyramid at ${TIME_C}`)
                   t.equals(s3Record2.device.name, `pyramid at ${TIME_D}`)
@@ -150,7 +150,7 @@ test('client RequestUtil', (t) => {
         deviceId: new Uint8Array([0]),
         objectId: testHelper.newUuid(),
         historySite: {
-          location: `https://huhi.com?q=${'x'.repeat(4048)}`,
+          location: `https://huhisoft.com?q=${'x'.repeat(4048)}`,
           title: 'lulz',
           lastAccessedTime: 1480000000 * 1000,
           creationTime: 1480000000 * 1000
@@ -175,7 +175,7 @@ test('client RequestUtil', (t) => {
           requestUtil.list(proto.categories.HISTORY_SITES)
             .then(s3Objects => requestUtil.s3ObjectsToRecords(s3Objects.contents))
             .then((response) => {
-              const s3Record = response[0]
+              const s3Record = response[0].record
               // FIXME: Should this deserialize to 'CREATE' ?
               t.equals(s3Record.action, 0, `${t.name}: action`)
               t.deepEquals(s3Record.deviceId, record.deviceId, `${t.name}: deviceId`)
@@ -189,13 +189,14 @@ test('client RequestUtil', (t) => {
     }
 
     const testCanPutBookmarks = (t) => {
+      // This record will be split into 6 parts
       const record = {
         action: 'CREATE',
         deviceId: new Uint8Array([0]),
         objectId: testHelper.newUuid(),
         bookmark: {
           site: {
-            location: `https://huhi.com?q=${'x'.repeat(4)}`,
+            location: `https://huhisoft.com?q=${'x'.repeat(4096)}`,
             title: 'lulz',
             lastAccessedTime: 1480000000 * 1000,
             creationTime: 1480000000 * 1000
@@ -211,7 +212,7 @@ test('client RequestUtil', (t) => {
         objectId: testHelper.newUuid(),
         bookmark: {
           site: {
-            location: `https://huhi.com?q=${'x'.repeat(4096)}`,
+            location: `https://huhisoft.com?q=${'x'.repeat(4)}`,
             title: 'lulz2',
             lastAccessedTime: 1480000000 * 1000,
             creationTime: 1480000000 * 1000
@@ -237,11 +238,15 @@ test('client RequestUtil', (t) => {
 
       const testCanListObjects = (t) => {
         t.test(`${t.name}`, (t) => {
-          t.plan(8)
-          requestUtil.list(proto.categories.BOOKMARKS)
-            .then(s3Objects => requestUtil.s3ObjectsToRecords(s3Objects.contents))
-            .then((response) => {
-              const s3Record = response[0]
+          t.plan(10)
+          requestUtil.list(proto.categories.BOOKMARKS, 0, 3)
+            .then(s3Objects => {
+              t.equals(s3Objects.isTruncated, true)
+              t.deepEquals(requestUtil.s3ObjectsToRecords(s3Objects.contents), [])
+              return requestUtil.list(proto.categories.BOOKMARKS, 0, 3, s3Objects.nextContinuationToken)
+                .then(s3Objects => requestUtil.s3ObjectsToRecords(s3Objects.contents))
+            }).then((response) => {
+              const s3Record = response[0].record
               // FIXME: Should this deserialize to 'CREATE' ?
               t.equals(s3Record.action, 0, `${t.name}: action`)
               t.deepEquals(s3Record.deviceId, record.deviceId, `${t.name}: deviceId`)
@@ -285,7 +290,7 @@ test('client RequestUtil', (t) => {
           requestUtil.list(proto.categories.BOOKMARKS, currentTime)
             .then(s3Objects => requestUtil.s3ObjectsToRecords(s3Objects.contents))
             .then((response) => {
-              const s3Record = response[0]
+              const s3Record = response[1] ? response[1].record : response[1]
               // Here we always see error `Record with CRC xxxxx is missing parts or corrupt.`
               // if record2.bookmark.site.location length is ~ 4096
               if (!s3Record) {
@@ -385,15 +390,109 @@ test('client RequestUtil', (t) => {
                 .then(s3Objects => requestUtil.s3ObjectsToRecords(s3Objects.contents))
                 .then((response) => {
                   t.equals(response.length, 1, `${t.name} deletes records`)
-                  const s3Record = response[0]
+                  const s3Record = response[0].record
                   t.assert(s3Record.device && s3Record.device.name, `${t.name} preserves device records`)
-                  testCanLimitResponse(t)
+                  testCanDoCompaction(t)
                 })
                 .catch((error) => { t.fail(error) })
             })
             .catch((error) => { t.fail(error) })
         })
         .catch((error) => { t.fail(error) })
+      })
+    }
+
+    const testCanDoCompaction = (t) => {
+      t.test('#compact bookmarks', (t) => {
+        t.plan(7)
+        const recordObjectId = testHelper.newUuid()
+        const record2ObjectId = testHelper.newUuid()
+        const record = {
+          action: 'CREATE',
+          deviceId: new Uint8Array([0]),
+          objectId: recordObjectId,
+          bookmark: {
+            site: {
+              location: `https://huhisoft.com?q=${'x'.repeat(4)}`,
+              title: 'HUHI',
+              lastAccessedTime: 1480000000 * 1000,
+              creationTime: 1480000000 * 1000
+            },
+            isFolder: false,
+            hideInToolbar: false,
+            order: '1.0.0.1'
+          }
+        }
+        // This record will be split into 6 parts
+        const record2 = {
+          action: 'CREATE',
+          deviceId: new Uint8Array([0]),
+          objectId: record2ObjectId,
+          bookmark: {
+            site: {
+              location: `https://huhisoft.com?q=${'x'.repeat(4096)}`,
+              title: 'HUHIE',
+              lastAccessedTime: 1480000000 * 1000,
+              creationTime: 1480000000 * 1000
+            },
+            isFolder: false,
+            hideInToolbar: false,
+            order: '1.0.0.2'
+          }
+        }
+        let record_update = record
+        record_update.action = 'UPDATE'
+        let record2_update = record2
+        record2_update.action = 'UPDATE'
+
+        requestUtil.put(proto.categories.BOOKMARKS, record)
+        requestUtil.put(proto.categories.BOOKMARKS, record2)
+        for (let i = 0; i < 5; ++i) {
+          requestUtil.put(proto.categories.BOOKMARKS, record_update)
+          requestUtil.put(proto.categories.BOOKMARKS, record2_update)
+        }
+        const consoleLogBak = console.log
+        let counter = 0
+        let compactedRecord = []
+        const compactionUpdate = (records) => {
+          compactedRecord = compactedRecord.concat(records)
+          counter = counter + 1
+        }
+        // limit batch size to 10 to test cross batch compaction for around 40
+        // objects
+        requestUtil.list(proto.categories.BOOKMARKS, 0, 10, '', {compaction: true,
+          compactionUpdateCb: compactionUpdate,
+          compactionDoneCb: () => {
+            console.log = consoleLogBak
+            console.log('compaction is done')
+            t.equals(counter, 5)
+            t.equals(compactedRecord.length, 9)
+            t.equals(
+              compactedRecord.filter(record => record.objectId.toString() === record_update.objectId.toString()).length, 4)
+            t.equals(
+              compactedRecord.filter(record => record.objectId.toString() === record2_update.objectId.toString()).length, 5)
+            //  we already have 15 second timeout for each batch so no need to
+            //  do another wait after compaction is done
+            requestUtil.list(proto.categories.BOOKMARKS, 0, 0)
+              .then(s3Objects => requestUtil.s3ObjectsToRecords(s3Objects.contents))
+              .then((response) => {
+                t.equals(response.length, 2, `${t.name} check records number`)
+                const s3Record = response[0].record
+                const s3Record2 = response[1].record
+                t.deepEquals(s3Record.objectId, record.objectId, `${t.name}: objectId`)
+                t.deepEquals(s3Record.bookmark.site.title, record_update.bookmark.site.title, `${t.name}: bookmark.title`)
+                requestUtil.deleteCategory(proto.categories.BOOKMARKS)
+                  .then((_response) => {
+                    testCanLimitResponse(t)
+                  })
+                  .catch((error) => { t.fail(error) })
+              })
+              .catch((error) => { t.fail(error) })
+          }
+        }).then(() => {
+          // compaction is still in progress
+          console.log = function() {}
+        })
       })
     }
 
@@ -455,7 +554,7 @@ test('client RequestUtil', (t) => {
         objectId: testHelper.newUuid(),
         bookmark: {
           site: {
-            location: `https://huhi.com?q=1`,
+            location: `https://huhisoft.com?q=1`,
             title: 'lulz',
             lastAccessedTime: 1480000000 * 1000,
             creationTime: 1480000000 * 1000
@@ -470,7 +569,7 @@ test('client RequestUtil', (t) => {
           objectId: testHelper.newUuid(),
           bookmark: {
             site: {
-              location: `https://huhi.com?q=2`,
+              location: `https://huhisoft.com?q=2`,
               title: 'lulz',
               lastAccessedTime: 1480000000 * 1000,
               creationTime: 1480000000 * 1000
@@ -485,7 +584,7 @@ test('client RequestUtil', (t) => {
           objectId: testHelper.newUuid(),
           bookmark: {
             site: {
-              location: `https://huhi.com?q=3`,
+              location: `https://huhisoft.com?q=3`,
               title: 'lulz',
               lastAccessedTime: 1480000000 * 1000,
               creationTime: 1480000000 * 1000
@@ -500,7 +599,7 @@ test('client RequestUtil', (t) => {
           objectId: testHelper.newUuid(),
           bookmark: {
             site: {
-              location: `https://huhi.com?q=4`,
+              location: `https://huhisoft.com?q=4`,
               title: 'lulz',
               lastAccessedTime: 1480000000 * 1000,
               creationTime: 1480000000 * 1000
@@ -515,7 +614,7 @@ test('client RequestUtil', (t) => {
           objectId: testHelper.newUuid(),
           bookmark: {
             site: {
-              location: `https://huhi.com?q=5`,
+              location: `https://huhisoft.com?q=5`,
               title: 'lulz',
               lastAccessedTime: 1480000000 * 1000,
               creationTime: 1480000000 * 1000

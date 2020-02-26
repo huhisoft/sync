@@ -26,19 +26,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/huhisoft/sync.git"
+    "url": "git+ssh://git@github.com/huhi/sync.git"
   },
   "keywords": [
     "huhi",
     "browser",
     "sync"
   ],
-  "author": "Huhi Software <support@huhisoft.com>",
+  "author": "Huhi Developers <support@huhisoft.com>",
   "license": "MPL-2.0",
   "bugs": {
-    "url": "https://github.com/huhisoft/sync/issues"
+    "url": "https://github.com/huhi/sync/issues"
   },
-  "homepage": "https://github.com/huhisoft/sync#readme",
+  "homepage": "https://github.com/huhi/sync#readme",
   "devDependencies": {
     "browserify": "^16.1.1",
     "cpr": "^3.0.1",
@@ -60,17 +60,20 @@
   "dependencies": {
     "@protobufjs/utf8": "^1.1.0",
     "aws-sdk": "^2.331.0",
-    "huhi-crypto": "github:huhisoft/crypto#fad144ff953eccb76e41126f98caa91451ee1fd8",
+    "huhi-crypto": "^0.2.0",
     "config": "^1.24.0",
     "cors": "^2.8.1",
     "crc": "^3.4.4",
     "deep-equal": "^1.0.1",
     "express": "^4.14.0",
     "lodash.merge": "^4.6.2",
+    "lru-cache": "^5.1.1",
     "protobufjs": "^6.8.0",
     "raven": "^0.12.3",
+    "redis": "^2.8.0",
     "request": "^2.79.0",
     "tweetnacl": "^1.0.0",
+    "useragent": "^2.3.0",
     "uuid": "^3.0.1",
     "winston": "^2.3.0"
   },

@@ -11,7 +11,7 @@
   // Fill this in using ex: server/config/default.json
   const config = {
     apiVersion: '0',
-    serverUrl: 'https://sync-staging.huhi.com',
+    serverUrl: 'https://sync-staging.huhisoft.com',
     debug: false // Set to true if sync debug output should be sent to the browser via IPC
   }
 
